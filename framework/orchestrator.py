@@ -10,7 +10,6 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from enum import Enum
 import threading
-import queue
 
 
 class WorkflowStatus(Enum):
@@ -22,10 +21,10 @@ class WorkflowStatus(Enum):
 
 
 class TaskType(Enum):
-    SEQUENTIAL = "sequential"  # Tasks run one after another
-    PARALLEL = "parallel"      # Tasks run simultaneously
-    CONDITIONAL = "conditional" # Tasks based on conditions
-    LOOP = "loop"              # Iterative tasks
+    SEQUENTIAL = "sequential"
+    PARALLEL = "parallel"
+    CONDITIONAL = "conditional"
+    LOOP = "loop"
 
 
 @dataclass
@@ -35,7 +34,7 @@ class WorkflowStep:
     task_type: TaskType
     action: str
     parameters: Dict
-    dependencies: List[str]  # Step IDs that must complete first
+    dependencies: List[str]
     timeout_seconds: int = 300
     retry_count: int = 0
     max_retries: int = 3
@@ -56,10 +55,6 @@ class WorkflowInstance:
 
 
 class MultiAgentOrchestrator:
-    """
-    Orchestrates multi-agent workflows with dependency management
-    """
-    
     def __init__(self, registry, governance, evaluator, storage_path: str = "workflows.json"):
         self.registry = registry
         self.governance = governance
@@ -81,20 +76,33 @@ class MultiAgentOrchestrator:
                 with open(self.storage_path, 'r') as f:
                     data = json.load(f)
                     for wf_id, wf_data in data.items():
+                        # Convert dict back to WorkflowInstance
+                        steps = [WorkflowStep(**s) for s in wf_data.get('steps', [])]
+                        wf_data['steps'] = steps
+                        wf_data['status'] = WorkflowStatus(wf_data.get('status', 'pending'))
                         self.workflows[wf_id] = WorkflowInstance(**wf_data)
-            except:
+            except Exception as e:
+                print(f"Error loading workflows: {e}")
                 pass
     
     def _save_workflows(self):
         """Persist workflows"""
         with self._lock:
-            with open(self.storage_path, 'w') as f:
-                json.dump({k: asdict(v) for k, v in self.workflows.items()}, 
-                         f, indent=2, default=str)
+            try:
+                with open(self.storage_path, 'w') as f:
+                    # Convert to serializable dict
+                    serializable = {}
+                    for k, v in self.workflows.items():
+                        data = asdict(v)
+                        data['status'] = v.status.value  # Convert enum to string
+                        serializable[k] = data
+                    json.dump(serializable, f, indent=2, default=str)
+            except Exception as e:
+                print(f"Error saving workflows: {e}")
     
     def create_workflow(self, name: str, steps: List[WorkflowStep]) -> str:
         """Create a new workflow definition"""
-        workflow_id = f"WF-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}-{hash(name) % 10000}"
+        workflow_id = f"WF-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}-{abs(hash(name)) % 10000}"
         
         workflow = WorkflowInstance(
             workflow_id=workflow_id,
@@ -130,10 +138,14 @@ class MultiAgentOrchestrator:
                 errors.append(f"Step {step.step_id}: Agent {step.agent_id} is inactive")
             
             # Check governance
-            context = {"logging": True, "approval": True}  # Assume full controls for validation
-            gov_result = self.governance.can_activate(agent, context) if agent else False
-            if not gov_result and agent:
-                warnings.append(f"Step {step.step_id}: Agent may not pass governance")
+            if agent:
+                context = {"logging": True, "approval": True}
+                try:
+                    gov_result = self.governance.can_activate(agent, context)
+                    if not gov_result:
+                        warnings.append(f"Step {step.step_id}: Agent may not pass governance")
+                except Exception as e:
+                    warnings.append(f"Step {step.step_id}: Governance check error: {e}")
         
         # Check for circular dependencies
         step_ids = {s.step_id for s in workflow.steps}
@@ -162,6 +174,7 @@ class MultiAgentOrchestrator:
         workflow.status = WorkflowStatus.RUNNING
         workflow.started_at = datetime.utcnow().isoformat()
         self.active_workflows.add(workflow_id)
+        self._save_workflows()
         
         try:
             results = self._execute_steps(workflow)
@@ -171,7 +184,12 @@ class MultiAgentOrchestrator:
             
             # Trigger callbacks
             for callback in self.completion_callbacks:
-                callback(workflow_id, results)
+                try:
+                    callback(workflow_id, results)
+                except Exception as e:
+                    print(f"Completion callback error: {e}")
+            
+            self._save_workflows()
             
             return {
                 "success": True,
@@ -184,6 +202,7 @@ class MultiAgentOrchestrator:
             workflow.status = WorkflowStatus.FAILED
             workflow.error_log.append(str(e))
             workflow.completed_at = datetime.utcnow().isoformat()
+            self._save_workflows()
             
             return {
                 "success": False,
@@ -194,7 +213,6 @@ class MultiAgentOrchestrator:
         
         finally:
             self.active_workflows.discard(workflow_id)
-            self._save_workflows()
     
     def _execute_steps(self, workflow: WorkflowInstance) -> Dict:
         """Execute workflow steps with dependency management"""
@@ -216,13 +234,19 @@ class MultiAgentOrchestrator:
             
             # Trigger step callback
             for callback in self.step_callbacks:
-                callback(workflow.workflow_id, step.step_id, step_result)
+                try:
+                    callback(workflow.workflow_id, step.step_id, step_result)
+                except Exception as e:
+                    print(f"Step callback error: {e}")
         
         return results
     
     def _execute_step(self, step: WorkflowStep) -> Dict:
         """Execute a single workflow step"""
         agent = self.registry.get_agent(step.agent_id)
+        
+        if not agent:
+            raise Exception(f"Agent {step.agent_id} not found")
         
         # Pre-execution governance check
         context = {"logging": True, "approval": True, "workflow_execution": True}
@@ -248,17 +272,23 @@ class MultiAgentOrchestrator:
                 "accountability": 0.92,
                 "safety_score": 0.94
             }
-            evaluation = self.evaluator.evaluate_universal(eval_scores)
-            execution_result["evaluation"] = evaluation
+            try:
+                evaluation = self.evaluator.evaluate_universal(eval_scores)
+                execution_result["evaluation"] = evaluation
+            except Exception as e:
+                execution_result["evaluation_error"] = str(e)
         
         return execution_result
     
     def _calculate_duration(self, workflow: WorkflowInstance) -> float:
         """Calculate workflow duration in seconds"""
         if workflow.started_at and workflow.completed_at:
-            start = datetime.fromisoformat(workflow.started_at)
-            end = datetime.fromisoformat(workflow.completed_at)
-            return (end - start).total_seconds()
+            try:
+                start = datetime.fromisoformat(workflow.started_at)
+                end = datetime.fromisoformat(workflow.completed_at)
+                return (end - start).total_seconds()
+            except:
+                return 0
         return 0
     
     def cancel_workflow(self, workflow_id: str) -> bool:
@@ -281,7 +311,7 @@ class MultiAgentOrchestrator:
         return {
             "workflow_id": workflow.workflow_id,
             "name": workflow.name,
-            "status": workflow.status.value,
+            "status": workflow.status.value,  # Convert enum to string
             "progress": f"{workflow.current_step}/{len(workflow.steps)}",
             "created_at": workflow.created_at,
             "started_at": workflow.started_at,
@@ -315,9 +345,9 @@ class MultiAgentOrchestrator:
         """Create predefined workflow templates"""
         steps = []
         
-        if template_type == "document_approval":
+        if template_type == "document_approval" and len(agent_ids) >= 3:
             # Sequential: Draft -> Review -> Approve
-            for i, (agent_id, action) in enumerate(zip(agent_ids, 
+            for i, (agent_id, action) in enumerate(zip(agent_ids[:3], 
                                                       ["draft", "review", "approve"])):
                 steps.append(WorkflowStep(
                     step_id=f"step_{i+1}",
@@ -329,9 +359,9 @@ class MultiAgentOrchestrator:
                     timeout_seconds=600
                 ))
         
-        elif template_type == "data_pipeline":
+        elif template_type == "data_pipeline" and len(agent_ids) >= 3:
             # Parallel: Extract, Transform, Load
-            for i, agent_id in enumerate(agent_ids):
+            for i, agent_id in enumerate(agent_ids[:3]):
                 steps.append(WorkflowStep(
                     step_id=f"step_{i+1}",
                     agent_id=agent_id,
@@ -342,7 +372,7 @@ class MultiAgentOrchestrator:
                     timeout_seconds=300
                 ))
         
-        elif template_type == "incident_response":
+        elif template_type == "incident_response" and len(agent_ids) >= 2:
             # Conditional: Detect -> Assess -> (Escalate or Resolve)
             steps.append(WorkflowStep(
                 step_id="detect",
@@ -360,5 +390,17 @@ class MultiAgentOrchestrator:
                 parameters={},
                 dependencies=["detect"]
             ))
+        
+        else:
+            # Fallback: simple single-step workflow
+            if agent_ids:
+                steps.append(WorkflowStep(
+                    step_id="step_1",
+                    agent_id=agent_ids[0],
+                    task_type=TaskType.SEQUENTIAL,
+                    action="process",
+                    parameters={},
+                    dependencies=[]
+                ))
         
         return self.create_workflow(f"{template_type}_{datetime.utcnow().strftime('%H%M%S')}", steps)
