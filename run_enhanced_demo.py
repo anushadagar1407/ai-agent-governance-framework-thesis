@@ -512,87 +512,101 @@ def main():
                       "🟡" if factor['impact'] == "medium" else "🟢"
         print(f"      {impact_emoji} {factor['factor']}: {factor['explanation']}")
     
-    # ==============================================================================
+     # ==============================================================================
     # PHASE 8: MULTI-AGENT ORCHESTRATION
     # ==============================================================================
     print_section("MULTI-AGENT ORCHESTRATION", "🎛️")
     
-    print_subsection("Creating Document Approval Workflow")
-    
-    # Create a 3-step workflow: Draft -> Review -> Approve
-    workflow_steps = [
-        WorkflowStep(
-            step_id="draft",
-            agent_id=registered_agents[1]['id'],  # Customer Service Agent
-            task_type=TaskType.SEQUENTIAL,
-            action="draft_document",
-            parameters={"doc_type": "compliance_report", "template": "standard"},
-            dependencies=[],
-            timeout_seconds=300
-        ),
-        WorkflowStep(
-            step_id="review",
-            agent_id=registered_agents[2]['id'],  # HR Agent
-            task_type=TaskType.SEQUENTIAL,
-            action="review_content",
-            parameters={"check_bias": True, "check_accuracy": True},
-            dependencies=["draft"],
-            timeout_seconds=600
-        ),
-        WorkflowStep(
-            step_id="approve",
-            agent_id=primary_agent['id'],  # Trading Bot (as final approver)
-            task_type=TaskType.SEQUENTIAL,
-            action="final_approval",
-            parameters={"require_signature": True},
-            dependencies=["review"],
-            timeout_seconds=120
-        )
-    ]
-    
-    workflow_id = orchestrator.create_workflow("Document_Approval_v1", workflow_steps)
-    print(f"    Workflow ID: {workflow_id}")
-    print(f"    Steps: {len(workflow_steps)} (Sequential)")
-    for step in workflow_steps:
-        dep_str = f" (depends on: {step.dependencies})" if step.dependencies else ""
-        print(f"      • {step.step_id}: {step.action} by {step.agent_id}{dep_str}")
-    
-    print_subsection("Validating Workflow")
-    
-    validation = orchestrator.validate_workflow(workflow_id)
-    print(f"    Valid: {'✅ YES' if validation['valid'] else '❌ NO'}")
-    if validation['warnings']:
-        print(f"    Warnings: {len(validation['warnings'])}")
-        for w in validation['warnings'][:2]:
-            print(f"      ⚠️  {w}")
-    
-    print_subsection("Executing Workflow")
-    
-    # Note: In a real implementation, this would execute actual agent tasks
-    # For demo purposes, we simulate the execution
-    print("    Simulating workflow execution...")
-    
-    # Manually simulate results for demo
-    workflow = orchestrator.workflows[workflow_id]
-    workflow.status = orchestrator.workflows[workflow_id].status  # Access via property
-    
-    # Create a simpler test - just show the structure
-    print(f"    Workflow Status: {orchestrator.get_workflow_status(workflow_id)['status']}")
-    print(f"    Ready for execution: ✅")
-    
-    print_subsection("Template-Based Workflow Creation")
-    
-    # Create from template
-    template_id = orchestrator.create_template_workflow(
-        "incident_response",
-        [registered_agents[0]['id'], registered_agents[3]['id']]  # Trading + Fraud
-    )
-    print(f"    Created incident response workflow: {template_id[:20]}...")
-    print(f"    Type: Conditional (Detect -> Assess -> Escalate/Resolve)")
-    
-    # List all workflows
-    all_workflows = orchestrator.list_workflows()
-    print(f"    Total Workflows: {len(all_workflows)}")
+    # Check if we have enough agents for workflows
+    if len(registered_agents) < 2:
+        print("  ⚠️  Not enough agents for multi-agent workflows (need 2+)")
+        print("  Skipping orchestration demo...")
+    else:
+        print_subsection("Creating Document Approval Workflow")
+        
+        # Create a 3-step workflow: Draft -> Review -> Approve
+        workflow_steps = [
+            WorkflowStep(
+                step_id="draft",
+                agent_id=registered_agents[0]['id'],
+                task_type=TaskType.SEQUENTIAL,
+                action="draft_document",
+                parameters={"doc_type": "compliance_report", "template": "standard"},
+                dependencies=[],
+                timeout_seconds=300
+            ),
+            WorkflowStep(
+                step_id="review",
+                agent_id=registered_agents[1]['id'] if len(registered_agents) > 1 else registered_agents[0]['id'],
+                task_type=TaskType.SEQUENTIAL,
+                action="review_content",
+                parameters={"check_bias": True, "check_accuracy": True},
+                dependencies=["draft"],
+                timeout_seconds=600
+            )
+        ]
+        
+        # Add third step if available
+        if len(registered_agents) > 2:
+            workflow_steps.append(
+                WorkflowStep(
+                    step_id="approve",
+                    agent_id=registered_agents[2]['id'],
+                    task_type=TaskType.SEQUENTIAL,
+                    action="final_approval",
+                    parameters={"require_signature": True},
+                    dependencies=["review"],
+                    timeout_seconds=120
+                )
+            )
+        
+        try:
+            workflow_id = orchestrator.create_workflow("Document_Approval_v1", workflow_steps)
+            print(f"    Workflow ID: {workflow_id}")
+            print(f"    Steps: {len(workflow_steps)} (Sequential)")
+            for step in workflow_steps:
+                dep_str = f" (depends on: {step.dependencies})" if step.dependencies else ""
+                print(f"      • {step.step_id}: {step.action} by {step.agent_id}{dep_str}")
+            
+            print_subsection("Validating Workflow")
+            
+            validation = orchestrator.validate_workflow(workflow_id)
+            print(f"    Valid: {'✅ YES' if validation['valid'] else '❌ NO'}")
+            if validation['errors']:
+                print(f"    Errors: {validation['errors']}")
+            if validation['warnings']:
+                print(f"    Warnings: {len(validation['warnings'])}")
+                for w in validation['warnings'][:2]:
+                    print(f"      ⚠️  {w[:60]}...")
+            
+            print_subsection("Workflow Status")
+            
+            status = orchestrator.get_workflow_status(workflow_id)
+            if status:
+                print(f"    Status: {status['status']}")
+                print(f"    Progress: {status['progress']}")
+                print(f"    Created: {status['created_at'][:19]}")
+            
+            print_subsection("Template-Based Workflow Creation")
+            
+            # Create from template
+            template_agents = [a['id'] for a in registered_agents[:2]]
+            template_id = orchestrator.create_template_workflow(
+                "incident_response",
+                template_agents
+            )
+            print(f"    Created incident response workflow: {template_id[:25]}...")
+            print(f"    Type: Conditional (Detect -> Assess)")
+            
+            # List all workflows
+            all_workflows = orchestrator.list_workflows()
+            print(f"    Total Workflows: {len(all_workflows)}")
+            for wf in all_workflows[:3]:
+                print(f"      • {wf['workflow_id'][:20]}... | {wf['name']} | {wf['status']}")
+                
+        except Exception as e:
+            print(f"    ⚠️  Workflow error: {e}")
+            print("    Continuing with demo...")
     
     # ==============================================================================
     # PHASE 9: COMPLIANCE REPORTING
