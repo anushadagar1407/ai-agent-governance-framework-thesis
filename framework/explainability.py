@@ -4,6 +4,7 @@ Provides transparency into agent decisions and evaluations
 """
 
 import json
+import os
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
@@ -49,7 +50,27 @@ class ExplainabilityEngine:
         try:
             with open(self.storage_path, 'r') as f:
                 data = json.load(f)
-                self.explanations = [Explanation(**item) for item in data]
+                for item in data:
+                    # Convert string back to Enum if needed
+                    exp_type = item.get('explanation_type', 'evaluation')
+                    if isinstance(exp_type, str):
+                        try:
+                            exp_type = ExplanationType(exp_type)
+                        except ValueError:
+                            exp_type = ExplanationType.EVALUATION
+                    
+                    self.explanations.append(Explanation(
+                        explanation_id=item.get('explanation_id', 'unknown'),
+                        timestamp=item.get('timestamp', datetime.utcnow().isoformat()),
+                        agent_id=item.get('agent_id', 'unknown'),
+                        explanation_type=exp_type,
+                        decision=item.get('decision', 'unknown'),
+                        factors=item.get('factors', []),
+                        confidence=item.get('confidence', 0.0),
+                        human_readable=item.get('human_readable', ''),
+                        technical_details=item.get('technical_details', {}),
+                        counterfactual=item.get('counterfactual')
+                    ))
         except (FileNotFoundError, json.JSONDecodeError):
             self.explanations = []
     
@@ -60,11 +81,18 @@ class ExplainabilityEngine:
                      f, indent=2, default=str)
     
     def _explanation_to_dict(self, exp: Explanation) -> Dict:
+        """Convert Explanation to dictionary, handling Enum properly"""
+        # Handle explanation_type whether it's Enum or string
+        if isinstance(exp.explanation_type, ExplanationType):
+            exp_type_value = exp.explanation_type.value
+        else:
+            exp_type_value = str(exp.explanation_type)
+        
         return {
             "explanation_id": exp.explanation_id,
             "timestamp": exp.timestamp,
             "agent_id": exp.agent_id,
-            "explanation_type": exp.explanation_type.value,
+            "explanation_type": exp_type_value,
             "decision": exp.decision,
             "factors": exp.factors,
             "confidence": exp.confidence,
@@ -189,14 +217,17 @@ class ExplainabilityEngine:
         
         human_readable = self._generate_risk_summary(agent, risk_trend, factors)
         
+        # Get risk score safely
+        risk_score = getattr(risk_trend, 'risk_score', 0.5)
+        
         explanation = Explanation(
             explanation_id=self._generate_id(),
             timestamp=datetime.utcnow().isoformat(),
             agent_id=agent.get('id', 'unknown'),
             explanation_type=ExplanationType.RISK,
-            decision=f"RISK_SCORE_{int(risk_trend.risk_score * 100) if hasattr(risk_trend, 'risk_score') else 50}",
+            decision=f"RISK_SCORE_{int(risk_score * 100)}",
             factors=factors,
-            confidence=1 - (risk_trend.risk_score if hasattr(risk_trend, 'risk_score') else 0.5),
+            confidence=1 - risk_score,
             human_readable=human_readable,
             technical_details={"risk_trend": risk_trend.__dict__ if hasattr(risk_trend, '__dict__') else {}}
         )
@@ -236,8 +267,7 @@ class ExplainabilityEngine:
         """Generate human-readable evaluation summary"""
         status = "PASSED" if passed else "FAILED"
         
-        summary = f"""
-EVALUATION REPORT FOR {agent.get('name', 'Unknown Agent')} ({agent.get('id')})
+        summary = f"""EVALUATION REPORT FOR {agent.get('name', 'Unknown Agent')} ({agent.get('id')})
 Status: {status} | Score: {score:.1%} | Grade: {grade}
 
 SUMMARY:
@@ -263,8 +293,7 @@ The agent has {'met' if passed else 'not met'} the required performance standard
         """Generate human-readable governance summary"""
         status = "APPROVED" if passed else "REJECTED"
         
-        summary = f"""
-GOVERNANCE DECISION FOR {agent.get('name', 'Unknown Agent')} ({agent.get('id')})
+        summary = f"""GOVERNANCE DECISION FOR {agent.get('name', 'Unknown Agent')} ({agent.get('id')})
 Decision: {status}
 
 COMPLIANCE CHECK RESULTS:
@@ -298,8 +327,7 @@ COMPLIANCE CHECK RESULTS:
                        "MEDIUM" if risk_score < 0.6 else \
                        "HIGH" if risk_score < 0.8 else "CRITICAL"
         
-        summary = f"""
-RISK ASSESSMENT FOR {agent.get('name', 'Unknown Agent')} ({agent.get('id')})
+        summary = f"""RISK ASSESSMENT FOR {agent.get('name', 'Unknown Agent')} ({agent.get('id')})
 Risk Score: {risk_score:.1%} ({risk_category})
 Trend: {trend.upper()}
 
@@ -339,7 +367,7 @@ RISK FACTORS:
                                              factors: List[Dict]) -> str:
         """Generate counterfactual for governance"""
         failed_required = [f for f in factors 
-                          if f['required'] and f['status'] == 'fail']
+                          if f.get('required') and f['status'] == 'fail']
         
         if not failed_required:
             return "Agent would be rejected if: logging disabled, or approval removed"
@@ -373,10 +401,16 @@ Total Explanations: {len(explanations)}
 
 EXPLANATION HISTORY:
 """
-        for exp in explanations[-5:]:  # Last 5
+        for exp in explanations[-5:]:
+            # Handle enum or string
+            if isinstance(exp.explanation_type, ExplanationType):
+                exp_type = exp.explanation_type.value
+            else:
+                exp_type = str(exp.explanation_type)
+            
             report += f"""
 ---
-Type: {exp.explanation_type.value}
+Type: {exp_type}
 Time: {exp.timestamp}
 Decision: {exp.decision}
 Confidence: {exp.confidence:.1%}
