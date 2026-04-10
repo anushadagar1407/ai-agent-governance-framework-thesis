@@ -38,4 +38,10 @@ python run_demo.py
 # Or run sample
 python framework/sample_run.py
 
+# Or open Jupyter notebook
+jupyter notebook notebooks/demo_analysis.ipynb
 
+
+---
+
+## **File Structure After All Changes**
