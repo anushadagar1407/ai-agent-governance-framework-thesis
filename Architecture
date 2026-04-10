@@ -1,0 +1,22 @@
+┌─────────────────────────────────────────┐
+│           Evaluation Layer              │
+│  ┌──────────────┐  ┌────────────────┐  │
+│  │   Universal  │  │   Workflow     │  │
+│  │   Metrics    │  │   Specific     │  │
+│  │   (Layer 1)  │  │   (Layer 2)    │  │
+│  └──────────────┘  └────────────────┘  │
+└─────────────────────────────────────────┘
+                   │
+┌─────────────────────────────────────────┐
+│         Governance Engine               │
+│  - Rule-based compliance checking       │
+│  - Risk-level specific controls         │
+│  - Audit logging                        │
+└─────────────────────────────────────────┘
+                   │
+┌─────────────────────────────────────────┐
+│         Agent Registry                  │
+│  - Persistent storage (JSON)            │
+│  - CRUD operations                      │
+│  - Search & filtering                   │
+└─────────────────────────────────────────┘
