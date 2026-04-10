@@ -1,4 +1,11 @@
+import os
+import sys
 import pandas as pd
+
+repo_root = os.path.dirname(os.path.abspath(__file__))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
 from framework.agent_registry import AgentRegistry
 from framework.governance import governance_check
 from framework.evaluator import evaluate_agent
@@ -20,6 +27,8 @@ for _, row in agents.iterrows():
 
 agent_row = agents.iloc[0].to_dict()
 agent_row["id"] = agent_row["agent_id"]
+agent_row["name"] = agent_row["agent_name"]
+agent_row["tools"] = agent_row["authorized_tools"].split(",")
 
 scores = {
     "reliability": 0.91,

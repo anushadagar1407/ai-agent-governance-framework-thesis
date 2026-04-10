@@ -33,7 +33,11 @@ The dummy datasets are synthetic and used only for demonstration and validation 
 ## How to Run
 
 ```bash
-python framework/sample_run.py
+python3 run_demo.py
+python3 -m run_demo
+python3 framework/sample_run.py
+# or
+python3 -m framework.sample_run
 ```
 
 ## Notes

@@ -1,4 +1,4 @@
-from metrics import calculate_metric_score
+from framework.metrics import calculate_metric_score
 
 def evaluate_agent(agent, scores):
     thresholds = {

@@ -1,6 +1,13 @@
-from agent_registry import AgentRegistry
-from governance import governance_check
-from evaluator import evaluate_agent
+import os
+import sys
+
+repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
+from framework.agent_registry import AgentRegistry
+from framework.governance import governance_check
+from framework.evaluator import evaluate_agent
 
 registry = AgentRegistry()
 
