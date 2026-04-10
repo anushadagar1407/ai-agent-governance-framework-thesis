@@ -13,6 +13,9 @@ from framework.models import (
 from framework.risk_analytics import RiskAnalyticsEngine, RiskTrend
 from framework.realtime_monitor import RealtimeMonitor, MetricEvent
 from framework.compliance_reporter import ComplianceReporter, ReportType
+from framework.explainability import ExplainabilityEngine, Explanation, ExplanationType
+from framework.orchestrator import MultiAgentOrchestrator, WorkflowStep, WorkflowInstance
+from framework.dashboard import DashboardGenerator
 
 __all__ = [
     "AgentRegistry",
@@ -23,6 +26,9 @@ __all__ = [
     "RiskAnalyticsEngine",
     "RealtimeMonitor",
     "ComplianceReporter",
+    "ExplainabilityEngine",
+    "MultiAgentOrchestrator",
+    "DashboardGenerator",
     "evaluate_agent",
     "governance_check",
     "AgentRegistration",
@@ -32,5 +38,9 @@ __all__ = [
     "AgentType",
     "RiskTrend",
     "MetricEvent",
-    "ReportType"
+    "ReportType",
+    "Explanation",
+    "ExplanationType",
+    "WorkflowStep",
+    "WorkflowInstance"
 ]
