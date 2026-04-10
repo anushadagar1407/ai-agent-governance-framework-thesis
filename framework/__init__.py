@@ -10,6 +10,9 @@ from framework.models import (
     RiskLevel,
     AgentType
 )
+from framework.risk_analytics import RiskAnalyticsEngine, RiskTrend
+from framework.realtime_monitor import RealtimeMonitor, MetricEvent
+from framework.compliance_reporter import ComplianceReporter, ReportType
 
 __all__ = [
     "AgentRegistry",
@@ -17,11 +20,17 @@ __all__ = [
     "GovernanceEngine",
     "MetricsCalculator",
     "AuditLogger",
+    "RiskAnalyticsEngine",
+    "RealtimeMonitor",
+    "ComplianceReporter",
     "evaluate_agent",
     "governance_check",
     "AgentRegistration",
     "ComprehensiveEvaluation",
     "GovernanceEvaluation",
     "RiskLevel",
-    "AgentType"
+    "AgentType",
+    "RiskTrend",
+    "MetricEvent",
+    "ReportType"
 ]
