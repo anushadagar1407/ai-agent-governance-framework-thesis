@@ -1,45 +1,30 @@
-# AI Agent Governance Framework Thesis
+# AI Agent Governance Framework
 
-This repository contains the research structure, prototype code, and dummy data for a thesis titled:
+Enterprise-grade governance framework for AI agents in regulated environments (Financial Services).
 
-**Designing Robust Evaluation Metrics and Governance Frameworks for AI Agents Across Enterprise Workflows**
+## Research Context
 
-## Research Question
+**Thesis Title:** Designing Robust Evaluation Metrics and Governance Frameworks for AI Agents Across Enterprise Workflows
 
-How can a regulated enterprise such as Deutsche Bank design, implement, and sustain a unified evaluation and governance framework, anchored by a formal Agent Registry, that reliably assesses the performance, safety, and accountability of autonomous AI agents across diverse and regulated business workflows?
+**Research Question:** How can a regulated enterprise design, implement, and sustain a unified evaluation and governance framework, anchored by a formal Agent Registry, that reliably assesses the performance, safety, and accountability of autonomous AI agents across diverse and regulated business workflows?
 
-## Thesis Objectives
+## Features
 
-- Differentiate AI tools from AI agents across an autonomy spectrum.
-- Design a two-layer evaluation framework with universal and workflow-specific metrics.
-- Develop an enterprise Agent Registry for identity, permissions, and accountability.
-- Integrate evaluation and governance with enterprise risk and compliance needs.
-- Prototype and validate the framework using simulated enterprise workflows.
-- Explore organizational and regulatory factors that affect adoption.
+- **Two-Layer Evaluation Framework:** Universal metrics + workflow-specific metrics
+- **Agent Registry:** Persistent storage with CRUD operations
+- **Governance Engine:** Rule-based compliance checking with audit trails
+- **Risk-Based Controls:** Different rules for low/medium/high/critical risk agents
+- **Immutable Audit Logs:** Tamper-evident logging with hash chains
+- **Validation:** Pydantic models for data integrity
 
-## Repository Contents
-
-- `thesis_proposal/`: thesis summary documents.
-- `framework/`: Python prototype for registry, metrics, governance, and evaluation.
-- `dummy_data/`: synthetic sample data for agents, workflows, evaluations, and checks.
-- `docs/`: architecture and data documentation.
-- `notebooks/`: demo analysis notebook.
-- `tests/`: basic tests for framework components.
-
-## Dummy Data
-
-The dummy datasets are synthetic and used only for demonstration and validation planning.
-
-## How to Run
+## Quick Start
 
 ```bash
-python3 run_demo.py
-python3 -m run_demo
-python3 framework/sample_run.py
-# or
-python3 -m framework.sample_run
-```
+# Install dependencies
+pip install -r requirements.txt
 
-## Notes
+# Run demo
+python run_demo.py
 
-This repository is designed as a thesis demonstration project and does not contain confidential or production enterprise data.
+# Or run sample
+python framework/sample_run.py
