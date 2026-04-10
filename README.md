@@ -17,6 +17,15 @@ Enterprise-grade governance framework for AI agents in regulated environments (F
 - **Immutable Audit Logs:** Tamper-evident logging with hash chains
 - **Validation:** Pydantic models for data integrity
 
+## Repository Contents
+
+- `thesis_proposal/`: Thesis summary documents
+- `framework/`: Python prototype for registry, metrics, governance, and evaluation
+- `dummy_data/`: Synthetic sample data for agents, workflows, evaluations, and checks
+- `docs/`: Architecture and data documentation
+- `notebooks/`: Demo analysis notebook (Jupyter)
+- `tests/`: Basic tests for framework components
+
 ## Quick Start
 
 ```bash
@@ -28,3 +37,5 @@ python run_demo.py
 
 # Or run sample
 python framework/sample_run.py
+
+
