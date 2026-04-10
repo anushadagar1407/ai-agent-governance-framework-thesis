@@ -1,0 +1,5 @@
+evaluation_id,agent_id,metric_name,score,threshold,passed,run_date
+E001,A001,reliability,0.91,0.85,yes,2026-04-01
+E002,A001,tool_use_accuracy,0.88,0.80,yes,2026-04-01
+E003,A002,behavioral_consistency,0.76,0.80,no,2026-04-01
+E004,A003,compliance_alignment,0.82,0.85,no,2026-04-01
