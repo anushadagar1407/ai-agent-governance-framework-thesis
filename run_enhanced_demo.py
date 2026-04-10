@@ -161,6 +161,8 @@ def main():
         ])
     
     registered_agents = []
+    skipped_agents = []
+    
     for _, row in agents_df.iterrows():
         try:
             tools = row["authorized_tools"].split(",") if isinstance(row["authorized_tools"], str) else []
@@ -179,19 +181,56 @@ def main():
                         "🟠" if agent['risk_level'] == 'high' else \
                         "🟡" if agent['risk_level'] == 'medium' else "🟢"
             
-            print(f"    {risk_emoji} {agent['id']}: {agent['name']} [{agent['risk_level'].upper()}]")
+            print(f"    {risk_emoji} REGISTERED: {agent['id']}: {agent['name']} [{agent['risk_level'].upper()}]")
             
             # Subscribe to real-time monitoring
             monitor.subscribe(agent['id'])
             
-        except Exception as e:
-            print(f"    ⚠️  Failed to register {row.get('agent_id')}: {e}")
+        except ValueError as e:
+            if "already exists" in str(e).lower():
+                # Agent exists - fetch from registry
+                existing_agent = registry.get_agent(row["agent_id"])
+                if existing_agent:
+                    registered_agents.append(existing_agent)
+                    skipped_agents.append(row["agent_id"])
+                    
+                    risk_emoji = "🔴" if existing_agent['risk_level'] == 'critical' else \
+                                "🟠" if existing_agent['risk_level'] == 'high' else \
+                                "🟡" if existing_agent['risk_level'] == 'medium' else "🟢"
+                    
+                    print(f"    {risk_emoji} EXISTS: {existing_agent['id']}: {existing_agent['name']} [{existing_agent['risk_level'].upper()}] (reusing)")
+                    
+                    # Subscribe to real-time monitoring
+                    monitor.subscribe(existing_agent['id'])
+            else:
+                print(f"    ⚠️  ERROR: {row.get('agent_id')}: {e}")
+    
+    # Verify we have agents to work with
+    if not registered_agents:
+        print("\n    ❌ CRITICAL: No agents available for demo!")
+        print("    Please delete registry_db.json and try again.")
+        return 1
+    
+    if skipped_agents:
+        print(f"\n    ℹ️  Reused {len(skipped_agents)} existing agents from previous run")
     
     # Select primary agent for detailed demo
     critical_agents = registry.get_agents_by_risk("critical")
-    primary_agent = critical_agents[0] if critical_agents else registered_agents[0]
+    high_risk_agents = registry.get_agents_by_risk("high")
     
-    print(f"\n  Primary demo agent: {primary_agent['name']} ({primary_agent['id']})")
+    # Priority: critical > high > any available
+    if critical_agents:
+        primary_agent = critical_agents[0]
+        print(f"\n  Primary demo agent (CRITICAL): {primary_agent['name']} ({primary_agent['id']})")
+    elif high_risk_agents:
+        primary_agent = high_risk_agents[0]
+        print(f"\n  Primary demo agent (HIGH): {primary_agent['name']} ({primary_agent['id']})")
+    elif registered_agents:
+        primary_agent = registered_agents[0]
+        print(f"\n  Primary demo agent (DEFAULT): {primary_agent['name']} ({primary_agent['id']})")
+    else:
+        print("\n    ❌ CRITICAL: No agents available for demo!")
+        return 1
     
     # ==============================================================================
     # PHASE 3: TWO-LAYER EVALUATION FRAMEWORK
