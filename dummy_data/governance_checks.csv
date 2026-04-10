@@ -1,0 +1,4 @@
+check_id,agent_id,check_type,result,owner,notes
+G001,A001,authorization,pass,Risk Team,All tools approved
+G002,A002,auditability,pass,Compliance,Logs available
+G003,A003,policy_alignment,review required,Risk Team,Needs tighter scope
