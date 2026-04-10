@@ -1,0 +1,4 @@
+agent_id,agent_name,agent_type,workflow,purpose,authorized_tools,risk_level,status
+A001,Coding Assistant,semi-autonomous,software_development,code suggestions,"git,python,docs",medium,active
+A002,QA Agent,semi-autonomous,qa_automation,test generation,"jira,selenium,python",medium,active
+A003,Business Analyst Agent,autonomous,business_analysis,report drafting,"sql,excel,docs",high,pilot
