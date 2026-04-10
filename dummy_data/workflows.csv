@@ -1,0 +1,4 @@
+workflow_id,workflow_name,business_unit,description
+W001,Code Review Support,Technology,Assists engineers with code review and suggestions
+W002,QA Automation,Technology,Generates and executes test cases
+W003,Business Reporting,Operations,Drafts structured business summaries from internal data
