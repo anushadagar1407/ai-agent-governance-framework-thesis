@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import sys
 
@@ -6,32 +7,49 @@ if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
 from framework.agent_registry import AgentRegistry
-from framework.governance import governance_check
-from framework.evaluator import evaluate_agent
+from framework.governance import GovernanceEngine
+from framework.evaluator import AgentEvaluator
+from framework.audit_logger import AuditLogger
 
-registry = AgentRegistry()
 
-registry.register_agent(
-    "A001",
-    "Coding Assistant",
-    "semi-autonomous",
-    "code suggestions",
-    ["git", "python", "docs"],
-    "medium"
-)
+def main():
+    print("Quick Sample Run\n")
+    
+    # Initialize
+    registry = AgentRegistry()
+    governance = GovernanceEngine()
+    evaluator = AgentEvaluator()
+    
+    # Register an agent
+    agent = registry.register_agent(
+        agent_id="A001",
+        name="Coding Assistant",
+        agent_type="semi-autonomous",
+        purpose="code suggestions",
+        tools=["git", "python", "docs"],
+        risk_level="medium"
+    )
+    print(f"Registered: {agent['name']} ({agent['id']})")
+    
+    # Evaluate
+    universal_scores = {
+        "reliability": 0.91,
+        "transparency": 0.85,
+        "accountability": 0.88,
+        "safety_score": 0.90
+    }
+    
+    result = evaluator.evaluate_universal(universal_scores)
+    print(f"\nEvaluation Score: {result['overall_score']}")
+    print(f"Grade: {result['grade']}")
+    
+    # Governance check
+    context = {"logging": True, "approval": True}
+    gov = governance.evaluate(agent, context)
+    print(f"\nGovernance: {gov.overall_status.value}")
+    
+    print("\n✅ Sample run complete")
 
-agent = registry.get_agent("A001")
-agent["id"] = "A001"
 
-scores = {
-    "reliability": 0.91,
-    "reasoning_quality": 0.84,
-    "tool_use_accuracy": 0.88,
-    "behavioral_consistency": 0.86
-}
-
-evaluation = evaluate_agent(agent, scores)
-governance = governance_check(agent, ["logging", "approval"])
-
-print("Evaluation:", evaluation)
-print("Governance:", governance)
+if __name__ == "__main__":
+    main()
